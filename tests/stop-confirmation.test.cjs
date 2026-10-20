@@ -1,0 +1,46 @@
+const {test}=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const vm=require('node:vm');
+const html=fs.readFileSync('index.html','utf8');
+test('finishing the slider asks for confirmation without stopping; incomplete slides reset',async()=>{
+ let handler,confirmed=0,stopped=0;
+ const ctx={document:{addEventListener:(_,fn)=>handler=fn},confirmStopFast:()=>confirmed++,stopFast:()=>stopped++,fail:e=>{throw e;}};
+ vm.createContext(ctx);
+ vm.runInContext(html.match(/document\.addEventListener\('change',async e=>\{if\(e\.target\.id==='stopSlide'\)[^\n]+/)[0],ctx);
+ const slider={id:'stopSlide',value:'100'};
+ await handler({target:slider});
+ assert.equal(confirmed,1);assert.equal(stopped,0);assert.equal(slider.value,0);
+ slider.value='50';await handler({target:slider});
+ assert.equal(confirmed,1);assert.equal(stopped,0);assert.equal(slider.value,0);
+});
+test('confirmation keeps the active timer untouched and binds the final action to that session',()=>{
+ let shown;
+ const state={activeFast:{id:'session-a',start:'2026-10-20T00:00:00Z'}};
+ const ctx={state,t:s=>s,esc:s=>s,btn:(text,action)=>`<button data-action="${action}">${text}</button>`,showDialog:(title,body)=>shown={title,body}};
+ vm.createContext(ctx);
+ const start=html.indexOf(' function confirmStopFast(){');
+ vm.runInContext(html.slice(start,html.indexOf('\n function checkinType(){',start)),ctx);
+ ctx.confirmStopFast();
+ assert.match(shown.body,/class="stop-face"/);
+ assert.match(shown.body,/data-action="close-modal"/);
+ assert.match(shown.body,/data-action="stop-fast" data-fast-id="session-a"/);
+ assert.equal(state.activeFast.id,'session-a');
+ state.activeFast=null;assert.throws(()=>ctx.confirmStopFast());
+});
+test('an old confirmation cannot end a newer session; confirmed stop records once and retains undo',async()=>{
+ let writes=0,undo;
+ const active={id:'session-b',start:'2026-10-20T00:00:00Z'};
+ const state={activeFast:active,fasts:[]};
+ const ctx={state,t:s=>s,now:()=> '2026-10-20T02:00:00Z',commit:async fn=>{writes++;fn(state);},modal:{close(){}},toast:(_,callback)=>undo=callback};
+ vm.createContext(ctx);
+ const start=html.indexOf(' async function stopFast(');
+ vm.runInContext(html.slice(start,html.indexOf('\n',start+1)),ctx);
+ await assert.rejects(()=>ctx.stopFast('session-a'));
+ assert.equal(writes,0);assert.equal(state.activeFast.id,'session-b');
+ await ctx.stopFast('session-b');
+ assert.equal(state.activeFast,null);assert.equal(state.fasts.length,1);
+ await assert.rejects(()=>ctx.stopFast('session-b'));
+ assert.equal(state.fasts.length,1);
+ await undo();assert.equal(state.activeFast.id,'session-b');assert.equal(state.fasts.length,0);
+});
