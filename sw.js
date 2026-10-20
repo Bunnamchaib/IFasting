@@ -1,5 +1,5 @@
 'use strict';
-const CACHE = 'ifasting-shell-v2';
+const CACHE = 'ifasting-shell-v3';
 const ROOT = new URL('./', self.location.href).href;
 const SHELL = ['index.html', 'manifest.webmanifest', 'favicon.png', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png'].map(p => new URL(p, ROOT).href);
 self.addEventListener('install', event => {

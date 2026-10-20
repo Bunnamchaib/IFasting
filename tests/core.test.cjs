@@ -61,3 +61,21 @@ test('saving old profile form without changing weight cannot fabricate measureme
  C.updateProfile(s,{...profile,weight:74},75,{id:'intentional',at:'2026-10-20T04:00:00Z'});
  assert.equal(s.weights.length,2);assert.equal(s.weights[1].kg,74);
 });
+test('legacy v1 backups migrate without avatar or language and keep health records',()=>{
+ const s=C.empty();s.profile={...profile};s.onboarded=true;delete s.settings.language;
+ s.water=[{id:'legacy',ml:250,at:'2026-10-20T00:00:00Z',updatedAt:'2026-10-20T00:00:00Z'}];
+ const restored=C.validateBackup(s);assert.equal(restored.profile.avatar,null);assert.equal(restored.settings.language,null);assert.equal(restored.water[0].ml,250);
+});
+test('compact JPEG profile photo and language survive export/import',()=>{
+ const jpeg='data:image/jpeg;base64,'+Buffer.from([255,216,255,...Array(200).fill(0),255,217]).toString('base64');
+ const s=C.empty();s.profile={...profile,avatar:jpeg};s.onboarded=true;s.settings.language='en';
+ const restored=C.validateBackup(JSON.parse(JSON.stringify(s)));assert.equal(restored.profile.avatar,jpeg);assert.equal(restored.settings.language,'en');
+ C.updateProfile(restored,{...restored.profile,avatar:null},70,{id:'unused',at:'2026-10-20T01:00:00Z'});
+ assert.equal(C.validateBackup(restored).profile.avatar,null,'Removing a photo persists in future backups');
+});
+test('reject unsupported/oversize avatars and unknown languages without mutating source',()=>{
+ const s=C.empty();s.profile={...profile};s.onboarded=true;
+ for(const avatar of ['https://example.com/photo.jpg','data:image/svg+xml;base64,PHN2Zz4=','data:image/jpeg;base64,'+'A'.repeat(22000)])assert.throws(()=>C.validateBackup({...s,profile:{...profile,avatar}}));
+ assert.throws(()=>C.validateBackup({...s,settings:{theme:'dark',language:'xx'}}));
+ assert.equal(s.profile.avatar,undefined);assert.equal(s.weights.length,0);
+});
