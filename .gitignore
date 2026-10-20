@@ -1,0 +1,13 @@
+backup/
+.firecrawl/
+ifasting-github-pages.zip
+tests/import-valid.json
+tests/import-invalid.json
+__pycache__/
+# Machine-specific work instructions, backups and conversation notes stay local.
+AGENTS.md
+backup.py
+note.md
+docs/CONCEPT-UX-REFERENCE.md
+docs/BUILD-PLAN.md
+docs/VERIFICATION.md
