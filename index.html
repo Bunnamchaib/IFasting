@@ -273,6 +273,8 @@ globalThis.IFEnglish={
  "บันทึกน้ำดื่ม": "Log water",
  "บันทึกการพักผ่อน": "Log rest",
  "แก้ไขรอบฟาสติ้ง": "Edit fasting session",
+ "เวลาเริ่มฟาสติ้ง": "Fasting start time",
+ "เวลาจบรอบฟาสติ้ง": "Fasting end time",
  "ปริมาณ (ml)": "Amount (ml)",
  "น้ำหนัก (kg)": "Weight (kg)",
  "วันที่และเวลา": "Date and time",
@@ -737,7 +739,7 @@ globalThis.IFCore=(()=>{
  const actions=()=>`<div class="form-actions"><button type="button" class="btn secondary" data-action="close-modal">${t("ยกเลิก")}</button><button type="submit" class="btn">${t("บันทึก")}</button></div>`;
  function showRecordForm(kind,recordId){const r=recordId?state[kind].find(x=>x.id===recordId):null;if(recordId&&!r)throw Error(t("รายการนี้ถูกเปลี่ยนแล้ว กรุณาลองใหม่"));const title={water:t("บันทึกน้ำดื่ม"),weights:t("บันทึกน้ำหนัก"),sleeps:t("บันทึกการพักผ่อน"),fasts:t("แก้ไขรอบฟาสติ้ง")}[kind];let fields;
   if(kind==='water'||kind==='weights'){const isWater=kind==='water';fields=field(isWater?t("ปริมาณ (ml)"):t("น้ำหนัก (kg)"),isWater?'ml':'kg','number',r?(isWater?r.ml:r.kg):(isWater?waterAmount:([...state.weights].sort((a,b)=>Date.parse(b.at)-Date.parse(a.at))[0]?.kg||state.profile.weight)),`required min="${isWater?1:20}" max="${isWater?3000:400}" step="${isWater?1:.1}" inputmode="decimal"`)+field(t("วันที่และเวลา"),'at','datetime-local',localInput(r?.at||Date.now()),'required');}
-  else{fields=field(t("เริ่ม / เข้านอน"),'start','datetime-local',localInput(r?.start||Date.now()-8*3600000),'required')+field(t("สิ้นสุด / ตื่นนอน"),'end','datetime-local',localInput(r?.end||Date.now()),'required');}
+  else{const fasting=kind==='fasts';fields=field(fasting?t("เวลาเริ่มฟาสติ้ง"):t("เริ่ม / เข้านอน"),'start','datetime-local',localInput(r?.start||Date.now()-8*3600000),'required')+field(fasting?t("เวลาจบรอบฟาสติ้ง"):t("สิ้นสุด / ตื่นนอน"),'end','datetime-local',localInput(r?.end||Date.now()),'required');}
   showDialog(title,`<form id="recordForm" data-kind="${kind}" data-record-id="${esc(r?.id||'')}" data-updated-at="${esc(r?.updatedAt||'')}"><div class="stack">${fields}</div>${actions()}${r?t("<button type=\"button\" class=\"textbtn\" style=\"color:var(--red);margin-top:20px\" data-action=\"delete-record\">ลบรายการนี้</button>"):''}</form>`);
  }
  function activeTimeForm(type){const wake=type==='wake',bed=type==='bed',active=wake?state.activeSleep:state.activeFast;if(wake&&!active)throw Error(t("ยังไม่มีเวลาเข้านอน เลือกบันทึกย้อนหลังได้ในหน้าการนอน"));showDialog(wake?t("ตื่นแล้ว ใช่ไหม?"):bed?t("พร้อมพักผ่อนแล้วใช่ไหม?"):t("เริ่มจังหวะของคุณ"),`<form id="activeForm" data-type="${type}" data-active-id="${esc(active?.id||'')}">${field(wake?t("เวลาตื่นนอน"):bed?t("เวลาเข้านอน"):t("เวลาเริ่มฟาสติ้ง"),'at','datetime-local',localInput(),'required')}<p class="card-note">${t("ปรับเวลาได้หากลืมบันทึกทันที")}${type==='start-fast'?t(" · ไม่บังคับเวลาสิ้นสุด"):''}</p>${actions()}</form>`);}
